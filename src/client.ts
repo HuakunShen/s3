@@ -1,55 +1,145 @@
 import {
   type BunFile,
   type S3Client as BunS3Client,
-  type S3File,
+  type S3File as BunS3File,
   type S3FilePresignOptions,
   type S3Options,
   type S3Stats,
 } from "bun";
+import { S3File } from "./file";
+import {
+  S3Client as RealS3Client,
+  PutObjectCommand,
+  DeleteObjectCommand,
+  HeadObjectCommand,
+} from "@aws-sdk/client-s3";
 
 export class S3Client implements Omit<BunS3Client, "new"> {
   options?: S3Options;
+  private _realS3Client?: RealS3Client;
 
-  constructor(options?: S3Options) {
+  constructor(options: S3Options) {
     this.options = options;
+    if (options.accessKeyId && options.secretAccessKey) {
+      this._realS3Client = new RealS3Client({
+        region: options?.region,
+        credentials: {
+          accessKeyId: options.accessKeyId,
+          secretAccessKey: options.secretAccessKey,
+        },
+      });
+    }
   }
 
-  file(path: string, options?: S3Options): S3File {
-    throw new Error("Method not implemented.");
+  realS3Client(options?: S3Options) {
+    if (options) {
+      if (!options.accessKeyId || !options.secretAccessKey) {
+        throw new Error("accessKeyId and secretAccessKey are required");
+      }
+      this._realS3Client = new RealS3Client({
+        region: options?.region,
+        credentials: {
+          accessKeyId: options.accessKeyId,
+          secretAccessKey: options.secretAccessKey,
+        },
+      });
+    }
+    if (!this._realS3Client) {
+      throw new Error("S3Client not initialized");
+    }
+    return this._realS3Client;
   }
-  write(
+
+  file(path: string, options?: S3Options): BunS3File {
+    return new S3File(path, [], options);
+  }
+  async write(
     path: string,
     data:
       | string
-      | ArrayBufferView
       | ArrayBuffer
-      | SharedArrayBuffer
-      | Request
-      | Response
-      | BunFile
-      | S3File
+      | Uint8Array
       | Blob
-      | File,
+      | File
+      | SharedArrayBuffer
+      | ArrayBufferView,
+    //   | Request
+    //   | Response
+    //   | BunFile
+    //   | S3File
     options?: S3Options
   ): Promise<number> {
-    throw new Error("Method not implemented.");
+    // convert data to Uint8Array
+    let body: Uint8Array;
+    if (typeof data === "string") {
+      body = new TextEncoder().encode(data);
+    } else if (data instanceof Blob || data instanceof File) {
+      body = new Uint8Array(await data.arrayBuffer());
+    } else if (data instanceof SharedArrayBuffer) {
+      body = new Uint8Array(data);
+    } else if (ArrayBuffer.isView(data)) {
+      body = new Uint8Array(data.buffer);
+    } else {
+      body = new Uint8Array(data);
+    }
+
+    await this.realS3Client(options).send(
+      new PutObjectCommand({
+        Bucket: this.options?.bucket,
+        Key: path,
+        Body: body,
+      })
+    );
+    return body.length;
   }
   presign(path: string, options?: S3FilePresignOptions): string {
     throw new Error("Method not implemented.");
   }
-  unlink(path: string, options?: S3Options): Promise<void> {
-    throw new Error("Method not implemented.");
+  async unlink(path: string, options?: S3Options): Promise<void> {
+    await this.realS3Client(options).send(
+      new DeleteObjectCommand({
+        Bucket: this.options?.bucket,
+        Key: path,
+      })
+    );
   }
-  size(path: string, options?: S3Options): Promise<number> {
-    throw new Error("Method not implemented.");
+  async size(path: string, options?: S3Options): Promise<number> {
+    const result = await this.realS3Client(options).send(
+      new HeadObjectCommand({
+        Bucket: this.options?.bucket,
+        Key: path,
+      })
+    );
+    return result.ContentLength ?? 0;
   }
-  exists(path: string, options?: S3Options): Promise<boolean> {
-    throw new Error("Method not implemented.");
+  async exists(path: string, options?: S3Options): Promise<boolean> {
+    try {
+      await this.size(path, options);
+      return true;
+    } catch (error) {
+      return false;
+    }
   }
-  stat(path: string, options?: S3Options): Promise<S3Stats> {
-    throw new Error("Method not implemented.");
+  async stat(path: string, options?: S3Options): Promise<S3Stats> {
+    const result = await this.realS3Client(options).send(
+      new HeadObjectCommand({
+        Bucket: this.options?.bucket,
+        Key: path,
+      })
+    );
+    return {
+      size: result.ContentLength ?? 0,
+      lastModified: result.LastModified ?? new Date(),
+      etag: result.ETag ?? "",
+      type: result.ContentType ?? "",
+    };
   }
-  delete(path: string, options?: S3Options): Promise<void> {
-    throw new Error("Method not implemented.");
+  async delete(path: string, options?: S3Options): Promise<void> {
+    await this.realS3Client(options).send(
+      new DeleteObjectCommand({
+        Bucket: this.options?.bucket,
+        Key: path,
+      })
+    );
   }
 }

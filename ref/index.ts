@@ -14,4 +14,6 @@ const client = new S3Client({
 
 // Bun.s3 is a global singleton that is equivalent to `new Bun.S3Client()`
 const s3file: S3File = client.file("123.json");
-await s3file.write(JSON.stringify({ hello: "world" }));
+// await s3file.write(JSON.stringify({ hello: "world" }));
+console.log(await s3file.stat());
+console.log(s3file.name);

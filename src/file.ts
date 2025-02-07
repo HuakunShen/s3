@@ -8,8 +8,9 @@ import {
 } from "bun";
 
 export class S3File extends Blob implements BunS3File {
-  constructor(parts?: BlobPart[], options?: BlobPropertyBag) {
+  constructor(name: string, parts?: BlobPart[], options?: BlobPropertyBag) {
     super(parts || [], options);
+    this.name = name;
     // Initialize required properties
     this.readable = new ReadableStream();
     this.size = 0;
@@ -45,6 +46,8 @@ export class S3File extends Blob implements BunS3File {
       | Blob,
     options?: S3Options
   ): Promise<number> {
+    console.log(this.name);
+
     throw new Error("Method not implemented.");
   }
   presign(options?: S3FilePresignOptions): string {
