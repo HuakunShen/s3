@@ -109,3 +109,10 @@ export class S3File implements BunS3File2 {
     throw new Error("Method not implemented.");
   }
 }
+
+
+export type Node = {
+  path: string;
+  type: "file" | "directory";
+  children: Node[];
+}

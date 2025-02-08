@@ -1,3 +1,4 @@
+import { type Node } from "./file";
 import {
   type BunFile,
   type S3Client as BunS3Client,
@@ -13,6 +14,9 @@ import {
   DeleteObjectCommand,
   HeadObjectCommand,
   GetObjectCommand,
+  ListObjectsCommand,
+  ListObjectsV2Command,
+  ListBucketsCommand,
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
@@ -153,5 +157,116 @@ export class S3Client implements IS3Client {
         Key: path,
       })
     );
+  }
+
+  async list(
+    path: string,
+    options?: S3Options
+  ): Promise<{
+    files: string[];
+    folders: string[];
+  }> {
+    const cmd = new ListObjectsV2Command({
+      Bucket: this.options?.bucket,
+      Prefix: path,
+      Delimiter: "/",
+    });
+    const result = await this.realS3Client(options).send(cmd);
+    const files: string[] =
+      result.Contents?.map((obj) => obj.Key)
+        .filter((k): k is string => k !== undefined)
+        .filter((k) => !k.endsWith("/")) || [];
+    const folders =
+      result.CommonPrefixes?.map((prefix) => prefix.Prefix).filter(
+        (p): p is string => p !== undefined
+      ) || [];
+
+    return {
+      files,
+      folders,
+    };
+  }
+
+  /**
+   * @example
+   * ```ts
+   * // Sample output
+   * [ "123.json", "2023/11/12/7a24730a-468f-4932-9f5b-1410621e18d1.png", "2024/5/14/security-boundaries.DbwnKJ6Y_Z29rJiu.svg",
+   * "2024/9/12/4MjHiKK.png", "2025/1/27/wacv24-2686.mp4", "2025/1/27/wacv24-2686.pdf", "a.mp4",
+   * "components.json", "vite.config.ts"
+   * ```
+   * @param path
+   * @param options
+   * @returns
+   */
+  async all(path: string, options?: S3Options): Promise<string[]> {
+    const cmd = new ListObjectsV2Command({
+      Bucket: this.options?.bucket,
+      Prefix: path,
+    });
+    const result = await this.realS3Client(options).send(cmd);
+    return (
+      result.Contents?.map((obj) => obj.Key)
+        .filter((k): k is string => k !== undefined)
+        .filter((k) => !k.endsWith("/")) || []
+    );
+  }
+
+  /**
+   * Return a tree structure of the files and folders in the given path.
+   * This will list all files, so don't use it for large directories.
+   * @param path
+   * @param options
+   * @returns
+   */
+  async tree(path: string, options?: S3Options): Promise<Node[]> {
+    const files = await this.all(path, options);
+    
+    // Create a map to store all nodes
+    const nodeMap = new Map<string, Node>();
+    const root: Node[] = [];
+
+    for (const filePath of files) {
+      const parts = filePath.split('/');
+      let currentPath = '';
+
+      for (let i = 0; i < parts.length; i++) {
+        const part = parts[i];
+        const isLastPart = i === parts.length - 1;
+        
+        // Build the current path
+        currentPath = currentPath ? `${currentPath}/${part}` : part;
+        
+        if (!nodeMap.has(currentPath)) {
+          const node: Node = {
+            path: part,
+            type: isLastPart ? 'file' : 'directory',
+            children: [],
+          };
+          nodeMap.set(currentPath, node);
+
+          if (i === 0) {
+            // This is a top-level node
+            root.push(node);
+          } else {
+            // Add this node as a child of its parent
+            const parentPath = parts.slice(0, i).join('/');
+            const parentNode = nodeMap.get(parentPath);
+            if (parentNode) {
+              parentNode.children.push(node);
+            }
+          }
+        }
+      }
+    }
+
+    return root;
+  }
+
+  async listBuckets(options?: S3Options): Promise<string[]> {
+    const result = await this.realS3Client(options).send(
+      new ListBucketsCommand({})
+    );
+    return result.Buckets?.map((bucket) => bucket.Name ?? "") ?? [];
   }
 }

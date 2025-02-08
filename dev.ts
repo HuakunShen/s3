@@ -18,11 +18,26 @@ const client = new S3Client({
 // console.log(await client.write("123.json", JSON.stringify({ hello: "world" })));
 // const s3fileJson: S3File = client.file("123.json");
 // console.log(await s3fileJson.json());
-const s3file = client.file("123.json");
+// const s3file = client.file("a.mp4");
+// const file = Bun.file("/Users/hk/Desktop/iShot_2025-02-07_22.11.10.mp4");
+// const bytes = await file.bytes();
+// await s3file.write(bytes);
+// const stream = await s3file.stream();
 
-console.log(await s3file.json());
-// await s3file.write(JSON.stringify({ hello: "world" }));
 
+console.log(JSON.stringify(await client.tree(""), null, 2));
+// console.log(await client.listBuckets());
+
+// if (stream) {
+//   const writer = Bun.file("./a.mp4").writer();
+//   const reader = stream.getReader();
+//   while (true) {
+//     const { done, value } = await reader.read();
+//     if (done) break;
+//     await writer.write(value);
+//   }
+//   await writer.end();
+// }
 // read README.md into a Blob
 
 // console.log(await client.write("123.txt", blob));
