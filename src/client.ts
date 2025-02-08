@@ -12,9 +12,16 @@ import {
   PutObjectCommand,
   DeleteObjectCommand,
   HeadObjectCommand,
+  GetObjectCommand,
 } from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
-export class S3Client implements Omit<BunS3Client, "new"> {
+type IS3Client = Omit<BunS3Client, "new" | "file" | "presign"> & {
+  presign: (path: string, options?: S3FilePresignOptions) => Promise<string>;
+  file: (path: string, options?: S3Options) => S3File;
+};
+
+export class S3Client implements IS3Client {
   options?: S3Options;
   private _realS3Client?: RealS3Client;
 
@@ -50,8 +57,8 @@ export class S3Client implements Omit<BunS3Client, "new"> {
     return this._realS3Client;
   }
 
-  file(path: string, options?: S3Options): BunS3File {
-    return new S3File(path, [], options);
+  file(path: string, options?: S3Options): S3File {
+    return new S3File(path, this, [], options);
   }
   async write(
     path: string,
@@ -92,8 +99,12 @@ export class S3Client implements Omit<BunS3Client, "new"> {
     );
     return body.length;
   }
-  presign(path: string, options?: S3FilePresignOptions): string {
-    throw new Error("Method not implemented.");
+  async presign(path: string, options?: S3FilePresignOptions): Promise<string> {
+    const command = new GetObjectCommand({
+      Bucket: this.options?.bucket,
+      Key: path,
+    });
+    return getSignedUrl(this.realS3Client(options), command);
   }
   async unlink(path: string, options?: S3Options): Promise<void> {
     await this.realS3Client(options).send(

@@ -14,15 +14,23 @@ const client = new S3Client({
 });
 
 // Bun.s3 is a global singleton that is equivalent to `new Bun.S3Client()`
-// const s3file: S3File = client.file("123.json");
+const s3fileJson: S3File = client.file("123.json");
+console.log(await s3fileJson.json());
+
 // await s3file.write(JSON.stringify({ hello: "world" }));
 
 // read README.md into a Blob
 const blob = await Bun.file("README.md").arrayBuffer();
 
-console.log(await client.write("123.txt", blob));
-console.log(await client.stat("123.txt"));
-console.log(await client.size("123.txt"));
-console.log(await client.exists("123.txt"));
+// console.log(await client.write("123.txt", blob));
+// console.log(await client.presign("123.txt"));
+// console.log(new TextDecoder().decode(await client.read("123.txt")));
+const s3File = client.file("/2023/2/2/ezup-home.png");
+console.log(await s3File.text());
+// console.log(await s3File.formData());
+// console.log(await s3File.text());
+// console.log(await client.stat("123.txt"));
+// console.log(await client.size("123.txt"));
+// console.log(await client.exists("123.txt"));
 // console.log(await client.unlink("123.txt"));
 // console.log(await client.exists("123.txt"));

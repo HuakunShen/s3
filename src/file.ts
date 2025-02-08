@@ -6,75 +6,110 @@ import {
   type S3Options,
   type S3Stats,
 } from "bun";
+import type { S3Client } from "./client";
 
-export class S3File extends Blob implements BunS3File {
-  constructor(name: string, parts?: BlobPart[], options?: BlobPropertyBag) {
+type BunS3File2 = Omit<BunS3File, "presign" | "slice"> & {
+  slice: (start?: number, end?: number, contentType?: string) => S3File;
+  presign: (options?: S3FilePresignOptions) => Promise<string>;
+};
+
+export class S3File extends Blob implements BunS3File2 {
+  client: S3Client;
+
+  constructor(
+    name: string,
+    client: S3Client,
+    parts?: BlobPart[],
+    options?: BlobPropertyBag
+  ) {
     super(parts || [], options);
     this.name = name;
+    this.client = client;
     // Initialize required properties
     this.readable = new ReadableStream();
-    this.size = 0;
-    this.type = "";
-    this.unlink = this.delete;
+    // this.size = 0;
+    // this.type = "";
+    // this.unlink = this.delete;
   }
 
-  slice(begin?: unknown, end?: unknown, contentType?: unknown): BunS3File {
-    throw new Error("Method not implemented.");
+  slice(start?: number, end?: number, contentType?: string): S3File {
+    const blob = super.slice(start, end, contentType);
+    return new S3File(this.name!, this.client, [blob], { type: blob.type });
   }
-  writer(options?: S3Options): NetworkSink {
-    throw new Error("Method not implemented.");
-  }
-  readable: ReadableStream<any>;
-  stream(): ReadableStream {
-    throw new Error("Method not implemented.");
-  }
-  name?: string | undefined;
-  bucket?: string | undefined;
+
   exists(): Promise<boolean> {
     throw new Error("Method not implemented.");
   }
-  write(
+  unlink(): Promise<void> {
+    return this.delete();
+  }
+
+  readable: ReadableStream<any>;
+  name?: string | undefined;
+  bucket?: string | undefined;
+
+  async write(
     data:
       | string
-      | ArrayBufferView
       | ArrayBuffer
+      | Uint8Array
+      | Blob
+      | File
       | SharedArrayBuffer
-      | Request
-      | Response
-      | BunFile
-      | BunS3File
-      | Blob,
+      | ArrayBufferView,
     options?: S3Options
   ): Promise<number> {
-    console.log(this.name);
+    return this.client.write(this.name!, data, {
+      ...options,
+      bucket: this.bucket,
+    });
+  }
 
-    throw new Error("Method not implemented.");
+  presign(options?: S3FilePresignOptions): Promise<string> {
+    return this.client.presign(this.name!, options);
   }
-  presign(options?: S3FilePresignOptions): string {
-    throw new Error("Method not implemented.");
+
+  async delete(): Promise<void> {
+    return this.client.delete(this.name!, { bucket: this.bucket });
   }
-  delete(): Promise<void> {
-    throw new Error("Method not implemented.");
+
+  async stat(): Promise<S3Stats> {
+    return this.client.stat(this.name!, { bucket: this.bucket });
   }
-  unlink: () => Promise<void>;
-  stat(): Promise<S3Stats> {
-    throw new Error("Method not implemented.");
+
+  async arrayBuffer(): Promise<ArrayBuffer> {
+    const url = await this.presign();
+    const response = await fetch(url);
+    return response.arrayBuffer();
   }
-  size: number;
-  type: string;
-  arrayBuffer(): Promise<ArrayBuffer> {
-    throw new Error("Method not implemented.");
+
+  async bytes(): Promise<Uint8Array> {
+    const buffer = await this.arrayBuffer();
+    return new Uint8Array(buffer);
   }
-  bytes(): Promise<Uint8Array<ArrayBufferLike>> {
-    throw new Error("Method not implemented.");
+
+  async text(): Promise<string> {
+    const buffer = await this.arrayBuffer();
+    return new TextDecoder().decode(buffer);
   }
-  text(): Promise<string> {
-    throw new Error("Method not implemented.");
+
+  async json(): Promise<any> {
+    const text = await this.text();
+    return JSON.parse(text);
   }
-  json(): Promise<any> {
-    throw new Error("Method not implemented.");
+
+  async formData(): Promise<FormData> {
+    const response = await fetch(await this.presign());
+    return response.formData();
   }
-  formData(): Promise<FormData> {
+
+  stream(): ReadableStream {
+    return this.readable;
+  }
+
+  writer(options?: S3Options): NetworkSink {
+    // This is a placeholder implementation
+    // Bun's NetworkSink type isn't fully documented yet
     throw new Error("Method not implemented.");
   }
 }

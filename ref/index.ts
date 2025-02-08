@@ -13,7 +13,14 @@ const client = new S3Client({
 });
 
 // Bun.s3 is a global singleton that is equivalent to `new Bun.S3Client()`
-const s3file: S3File = client.file("123.json");
+const s3file: S3File = client.file("/2023/2/2/ezup-home.png");
+console.log(s3file.presign());
+// const s3file: S3File = client.file("123.json");
 // await s3file.write(JSON.stringify({ hello: "world" }));
-console.log(await s3file.stat());
-console.log(s3file.name);
+// console.log(await s3file.stat());
+// console.log(s3file.name);
+// const stream = s3file.stream();
+// for await (const chunk of stream) {
+//   console.log(chunk);
+// }
+// s3://hacker-storage/2023/2/2/ezup-home.png
