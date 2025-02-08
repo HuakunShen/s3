@@ -8,33 +8,32 @@ import {
 } from "bun";
 import type { S3Client } from "./client";
 
-type BunS3File2 = Omit<BunS3File, "presign" | "slice"> & {
-  slice: (start?: number, end?: number, contentType?: string) => S3File;
+type BunS3File2 = Omit<
+  BunS3File,
+  "presign" | "slice" | "stream" | "size" | "type"
+> & {
   presign: (options?: S3FilePresignOptions) => Promise<string>;
+  stream: () => Promise<ReadableStream<Uint8Array> | null>;
+  size: () => Promise<number>;
+  type: () => Promise<string>;
 };
 
-export class S3File extends Blob implements BunS3File2 {
+export class S3File implements BunS3File2 {
   client: S3Client;
+  name: string;
 
-  constructor(
-    name: string,
-    client: S3Client,
-    parts?: BlobPart[],
-    options?: BlobPropertyBag
-  ) {
-    super(parts || [], options);
+  constructor(name: string, client: S3Client) {
     this.name = name;
     this.client = client;
-    // Initialize required properties
     this.readable = new ReadableStream();
-    // this.size = 0;
-    // this.type = "";
-    // this.unlink = this.delete;
   }
 
-  slice(start?: number, end?: number, contentType?: string): S3File {
-    const blob = super.slice(start, end, contentType);
-    return new S3File(this.name!, this.client, [blob], { type: blob.type });
+  async size() {
+    return this.client.size(this.name);
+  }
+
+  async type() {
+    return this.client.stat(this.name).then((stats) => stats.type);
   }
 
   exists(): Promise<boolean> {
@@ -45,8 +44,6 @@ export class S3File extends Blob implements BunS3File2 {
   }
 
   readable: ReadableStream<any>;
-  name?: string | undefined;
-  bucket?: string | undefined;
 
   async write(
     data:
@@ -59,22 +56,19 @@ export class S3File extends Blob implements BunS3File2 {
       | ArrayBufferView,
     options?: S3Options
   ): Promise<number> {
-    return this.client.write(this.name!, data, {
-      ...options,
-      bucket: this.bucket,
-    });
+    return this.client.write(this.name, data, options);
   }
 
   presign(options?: S3FilePresignOptions): Promise<string> {
-    return this.client.presign(this.name!, options);
+    return this.client.presign(this.name, options);
   }
 
   async delete(): Promise<void> {
-    return this.client.delete(this.name!, { bucket: this.bucket });
+    return this.client.delete(this.name);
   }
 
   async stat(): Promise<S3Stats> {
-    return this.client.stat(this.name!, { bucket: this.bucket });
+    return this.client.stat(this.name);
   }
 
   async arrayBuffer(): Promise<ArrayBuffer> {
@@ -103,8 +97,10 @@ export class S3File extends Blob implements BunS3File2 {
     return response.formData();
   }
 
-  stream(): ReadableStream {
-    return this.readable;
+  async stream(): Promise<ReadableStream<Uint8Array> | null> {
+    const url = await this.presign();
+    const response = await fetch(url);
+    return response.body;
   }
 
   writer(options?: S3Options): NetworkSink {

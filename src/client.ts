@@ -34,6 +34,7 @@ export class S3Client implements IS3Client {
           accessKeyId: options.accessKeyId,
           secretAccessKey: options.secretAccessKey,
         },
+        endpoint: options.endpoint,
       });
     }
   }
@@ -58,7 +59,7 @@ export class S3Client implements IS3Client {
   }
 
   file(path: string, options?: S3Options): S3File {
-    return new S3File(path, this, [], options);
+    return new S3File(path, this);
   }
   async write(
     path: string,

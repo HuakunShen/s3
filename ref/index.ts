@@ -4,6 +4,7 @@ const client = new S3Client({
   accessKeyId: Bun.env.AWS_ACCESS_KEY_ID,
   secretAccessKey: Bun.env.AWS_SECRET_ACCESS_KEY,
   bucket: Bun.env.AWS_BUCKET_NAME,
+  endpoint: Bun.env.S3_ENDPOINT,
   // sessionToken: "..."
   // acl: "public-read",
   // endpoint: "https://s3.us-east-1.amazonaws.com",
@@ -13,8 +14,9 @@ const client = new S3Client({
 });
 
 // Bun.s3 is a global singleton that is equivalent to `new Bun.S3Client()`
-const s3file: S3File = client.file("/2023/2/2/ezup-home.png");
-console.log(s3file.presign());
+await client.write("123.json", JSON.stringify({ hello: "world" }));
+// const s3file: S3File = client.file("/2023/2/2/ezup-home.png");
+// console.log(s3file.presign());
 // const s3file: S3File = client.file("123.json");
 // await s3file.write(JSON.stringify({ hello: "world" }));
 // console.log(await s3file.stat());

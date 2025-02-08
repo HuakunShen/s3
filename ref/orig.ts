@@ -4,11 +4,12 @@ import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 const s3Client = new S3Client({
   // endpoint: 'https://741b020e5dd2db3e41f040f973d614a8.r2.cloudflarestorage.com', // LocalStack endpoint
   // forcePathStyle: true, // Required for LocalStack
-  region: Bun.env.AWS_REGION || "us-east-1",
+  region: Bun.env.AWS_REGION || "auto",
   credentials: {
     accessKeyId: Bun.env.AWS_ACCESS_KEY_ID || "",
     secretAccessKey: Bun.env.AWS_SECRET_ACCESS_KEY || "",
   },
+  endpoint: Bun.env.S3_ENDPOINT || "",
 });
 
 // Function to upload a file to S3
@@ -41,7 +42,7 @@ const bucketName = Bun.env.AWS_BUCKET_NAME || "";
 await uploadFileToS3(
   bucketName,
   "vite.config.ts",
-  "../vite.config.ts"
+  "/Users/hk/Dev/s3/examples.ts"
   // 'wacv24-2686.mp4',
   // '/Users/hk/Downloads/wacv24-2686.mp4'
 );
