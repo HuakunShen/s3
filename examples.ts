@@ -72,3 +72,56 @@ console.log("File contents:", text);
 const imageFile = s3.file("small-image.png");
 const imageBuffer = await imageFile.arrayBuffer();
 await Bun.write("downloaded-small-image.png", imageBuffer);
+
+// Example 11: List files and folders in a directory
+const listing = await s3.list("docs/");
+console.log("Files in docs/:", listing.files);
+console.log("Subfolders in docs/:", listing.folders);
+
+// Example 12: Get a flat list of all files (recursive)
+const allFiles = await s3.all("uploads/2024/");
+console.log("All files in uploads/2024/:", allFiles);
+/* Sample output:
+[
+  "uploads/2024/01/report.pdf",
+  "uploads/2024/02/image1.jpg",
+  "uploads/2024/02/image2.jpg",
+  "uploads/2024/notes.txt"
+]
+*/
+
+// Example 13: Get a tree structure of files and folders
+const tree = await s3.tree("");
+console.log("File tree structure:", JSON.stringify(tree, null, 2));
+/* Sample output:
+[
+  {
+    "path": "docs",
+    "type": "directory",
+    "children": [
+      {
+        "path": "guide.pdf",
+        "type": "file",
+        "children": []
+      },
+      {
+        "path": "images",
+        "type": "directory",
+        "children": [
+          {
+            "path": "diagram.png",
+            "type": "file",
+            "children": []
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "path": "config.json",
+    "type": "file",
+    "children": []
+  }
+]
+*/
+
