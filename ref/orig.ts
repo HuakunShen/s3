@@ -1,4 +1,4 @@
-import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
+import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 
 // Configure the S3 client
 const s3Client = new S3Client({
@@ -16,7 +16,7 @@ const s3Client = new S3Client({
 async function uploadFileToS3(
   bucketName: string,
   key: string,
-  filePath: string
+  filePath: string,
 ) {
   try {
     // Read the file
@@ -42,7 +42,7 @@ const bucketName = Bun.env.AWS_BUCKET_NAME || "";
 await uploadFileToS3(
   bucketName,
   "vite.config.ts",
-  "/Users/hk/Dev/s3/examples.ts"
+  "/Users/hk/Dev/s3/examples.ts",
   // 'wacv24-2686.mp4',
   // '/Users/hk/Downloads/wacv24-2686.mp4'
 );

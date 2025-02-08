@@ -24,7 +24,6 @@ const client = new S3Client({
 // await s3file.write(bytes);
 // const stream = await s3file.stream();
 
-
 console.log(JSON.stringify(await client.tree(""), null, 2));
 // console.log(await client.listBuckets());
 

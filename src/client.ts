@@ -1,22 +1,21 @@
 import { type Node } from "./file";
 import {
-  type BunFile,
   type S3Client as BunS3Client,
   type S3File as BunS3File,
   type S3FilePresignOptions,
   type S3Options,
   type S3Stats,
-} from "bun";
+} from "./types";
 import { S3File } from "./file";
 import {
-  S3Client as RealS3Client,
-  PutObjectCommand,
   DeleteObjectCommand,
-  HeadObjectCommand,
   GetObjectCommand,
+  HeadObjectCommand,
+  ListBucketsCommand,
   ListObjectsCommand,
   ListObjectsV2Command,
-  ListBucketsCommand,
+  PutObjectCommand,
+  S3Client as RealS3Client,
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
@@ -43,7 +42,7 @@ export class S3Client implements IS3Client {
     }
   }
 
-  realS3Client(options?: S3Options) {
+  realS3Client(options?: S3Options): RealS3Client {
     if (options) {
       if (!options.accessKeyId || !options.secretAccessKey) {
         throw new Error("accessKeyId and secretAccessKey are required");
@@ -79,7 +78,7 @@ export class S3Client implements IS3Client {
     //   | Response
     //   | BunFile
     //   | S3File
-    options?: S3Options
+    options?: S3Options,
   ): Promise<number> {
     // convert data to Uint8Array
     let body: Uint8Array;
@@ -100,7 +99,7 @@ export class S3Client implements IS3Client {
         Bucket: this.options?.bucket,
         Key: path,
         Body: body,
-      })
+      }),
     );
     return body.length;
   }
@@ -116,7 +115,7 @@ export class S3Client implements IS3Client {
       new DeleteObjectCommand({
         Bucket: this.options?.bucket,
         Key: path,
-      })
+      }),
     );
   }
   async size(path: string, options?: S3Options): Promise<number> {
@@ -124,7 +123,7 @@ export class S3Client implements IS3Client {
       new HeadObjectCommand({
         Bucket: this.options?.bucket,
         Key: path,
-      })
+      }),
     );
     return result.ContentLength ?? 0;
   }
@@ -141,7 +140,7 @@ export class S3Client implements IS3Client {
       new HeadObjectCommand({
         Bucket: this.options?.bucket,
         Key: path,
-      })
+      }),
     );
     return {
       size: result.ContentLength ?? 0,
@@ -155,13 +154,13 @@ export class S3Client implements IS3Client {
       new DeleteObjectCommand({
         Bucket: this.options?.bucket,
         Key: path,
-      })
+      }),
     );
   }
 
   async list(
     path: string,
-    options?: S3Options
+    options?: S3Options,
   ): Promise<{
     files: string[];
     folders: string[];
@@ -172,13 +171,12 @@ export class S3Client implements IS3Client {
       Delimiter: "/",
     });
     const result = await this.realS3Client(options).send(cmd);
-    const files: string[] =
-      result.Contents?.map((obj) => obj.Key)
-        .filter((k): k is string => k !== undefined)
-        .filter((k) => !k.endsWith("/")) || [];
+    const files: string[] = result.Contents?.map((obj) => obj.Key)
+      .filter((k): k is string => k !== undefined)
+      .filter((k) => !k.endsWith("/")) || [];
     const folders =
       result.CommonPrefixes?.map((prefix) => prefix.Prefix).filter(
-        (p): p is string => p !== undefined
+        (p): p is string => p !== undefined,
       ) || [];
 
     return {
@@ -221,26 +219,26 @@ export class S3Client implements IS3Client {
    */
   async tree(path: string, options?: S3Options): Promise<Node[]> {
     const files = await this.all(path, options);
-    
+
     // Create a map to store all nodes
     const nodeMap = new Map<string, Node>();
     const root: Node[] = [];
 
     for (const filePath of files) {
-      const parts = filePath.split('/');
-      let currentPath = '';
+      const parts = filePath.split("/");
+      let currentPath = "";
 
       for (let i = 0; i < parts.length; i++) {
         const part = parts[i];
         const isLastPart = i === parts.length - 1;
-        
+
         // Build the current path
         currentPath = currentPath ? `${currentPath}/${part}` : part;
-        
+
         if (!nodeMap.has(currentPath)) {
           const node: Node = {
             path: part,
-            type: isLastPart ? 'file' : 'directory',
+            type: isLastPart ? "file" : "directory",
             children: [],
           };
           nodeMap.set(currentPath, node);
@@ -250,7 +248,7 @@ export class S3Client implements IS3Client {
             root.push(node);
           } else {
             // Add this node as a child of its parent
-            const parentPath = parts.slice(0, i).join('/');
+            const parentPath = parts.slice(0, i).join("/");
             const parentNode = nodeMap.get(parentPath);
             if (parentNode) {
               parentNode.children.push(node);
@@ -265,7 +263,7 @@ export class S3Client implements IS3Client {
 
   async listBuckets(options?: S3Options): Promise<string[]> {
     const result = await this.realS3Client(options).send(
-      new ListBucketsCommand({})
+      new ListBucketsCommand({}),
     );
     return result.Buckets?.map((bucket) => bucket.Name ?? "") ?? [];
   }

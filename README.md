@@ -10,9 +10,9 @@ The official `@aws-sdk/client-s3` package looks "ugly"/unintuitive to use.
 
 So I built this package to provide a similar interface as Bun's S3 API.
 
-Due to some limitations from `@aws-sdk/client-s3`, I can't make the API 100% matching that of Bun's S3 API.
-e.g. Some methods are sync in Bun's S3 API, but async in this package.
-But overall, most features are available.
+Due to some limitations from `@aws-sdk/client-s3`, I can't make the API 100%
+matching that of Bun's S3 API. e.g. Some methods are sync in Bun's S3 API, but
+async in this package. But overall, most features are available.
 
 ```ts
 const s3 = new S3Client({

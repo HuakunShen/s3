@@ -124,4 +124,3 @@ console.log("File tree structure:", JSON.stringify(tree, null, 2));
   }
 ]
 */
-

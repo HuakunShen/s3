@@ -257,7 +257,7 @@ export interface FileSink {
    * If the file descriptor is not writable yet, the data is buffered.
    */
   write(
-    chunk: string | ArrayBufferView | ArrayBuffer | SharedArrayBuffer
+    chunk: string | ArrayBufferView | ArrayBuffer | SharedArrayBuffer,
   ): number;
   /**
    * Flush the internal buffer, committing the data to disk or the pipe.
@@ -313,7 +313,7 @@ export interface NetworkSink extends FileSink {
    * If the network is not writable yet, the data is buffered.
    */
   write(
-    chunk: string | ArrayBufferView | ArrayBuffer | SharedArrayBuffer
+    chunk: string | ArrayBufferView | ArrayBuffer | SharedArrayBuffer,
   ): number;
   /**
    * Flush the internal buffer, committing the data to the network.
@@ -544,7 +544,7 @@ export interface S3File extends Blob {
       | Response
       | S3File
       | Blob,
-    options?: S3Options
+    options?: S3Options,
   ): Promise<number>;
 
   /**
@@ -668,7 +668,6 @@ export type S3Client = {
    *
    *     // To write a file without returning the instance:
    *     await bucket.write("my-file.txt", "Hello Bun!");
-   *
    */
   new (options?: S3Options): S3Client;
 
@@ -722,7 +721,7 @@ export type S3Client = {
       | S3File
       | Blob
       | File,
-    options?: S3Options
+    options?: S3Options,
   ): Promise<number>;
 
   /**

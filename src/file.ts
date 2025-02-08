@@ -1,22 +1,23 @@
 import {
-  type BunFile,
-  type S3File as BunS3File,
   type NetworkSink,
+  type S3File as BunS3File,
   type S3FilePresignOptions,
   type S3Options,
   type S3Stats,
-} from "bun";
+} from "./types";
 import type { S3Client } from "./client";
 
-type BunS3File2 = Omit<
-  BunS3File,
-  "presign" | "slice" | "stream" | "size" | "type"
-> & {
-  presign: (options?: S3FilePresignOptions) => Promise<string>;
-  stream: () => Promise<ReadableStream<Uint8Array> | null>;
-  size: () => Promise<number>;
-  type: () => Promise<string>;
-};
+type BunS3File2 =
+  & Omit<
+    BunS3File,
+    "presign" | "slice" | "stream" | "size" | "type"
+  >
+  & {
+    presign: (options?: S3FilePresignOptions) => Promise<string>;
+    stream: () => Promise<ReadableStream<Uint8Array> | null>;
+    size: () => Promise<number>;
+    type: () => Promise<string>;
+  };
 
 export class S3File implements BunS3File2 {
   client: S3Client;
@@ -28,16 +29,16 @@ export class S3File implements BunS3File2 {
     this.readable = new ReadableStream();
   }
 
-  async size() {
+  async size(): Promise<number> {
     return this.client.size(this.name);
   }
 
-  async type() {
+  async type(): Promise<string> {
     return this.client.stat(this.name).then((stats) => stats.type);
   }
 
   exists(): Promise<boolean> {
-    throw new Error("Method not implemented.");
+    return this.client.exists(this.name);
   }
   unlink(): Promise<void> {
     return this.delete();
@@ -54,7 +55,7 @@ export class S3File implements BunS3File2 {
       | File
       | SharedArrayBuffer
       | ArrayBufferView,
-    options?: S3Options
+    options?: S3Options,
   ): Promise<number> {
     return this.client.write(this.name, data, options);
   }
@@ -110,9 +111,8 @@ export class S3File implements BunS3File2 {
   }
 }
 
-
 export type Node = {
   path: string;
   type: "file" | "directory";
   children: Node[];
-}
+};
